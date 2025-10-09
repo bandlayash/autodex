@@ -8,7 +8,7 @@ export default function HomePage() {
 
   return (
     <section
-      className={`py-20 text-center transition-colors duration-300 ${
+      className={`h-full flex flex-col items-center justify-center text-center transition-colors duration-300 ${
         darkMode ? "bg-gray-800 text-gray-100" : "bg-blue-100 text-gray-900"
       }`}
     >

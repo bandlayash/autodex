@@ -8,7 +8,7 @@ export default function Footer() {
 
   return (
     <footer
-      className={`text-center py-6 mt-10 transition-colors duration-300 ${
+      className={`text-center py-6 transition-colors duration-300 ${
         darkMode ? "bg-gray-950 text-gray-400" : "bg-gray-800 text-white"
       }`}
     >

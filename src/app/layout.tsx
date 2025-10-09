@@ -10,15 +10,14 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="flex flex-col min-h-screen">
+    <html lang="en" className="h-full">
+      <body className="flex flex-col min-h-screen h-full">
         <DarkModeProvider>
           <Header />
           <main className="flex-grow">{children}</main>
           <Footer />
         </DarkModeProvider>
       </body>
-
     </html>
   );
 }

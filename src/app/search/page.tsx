@@ -10,7 +10,7 @@ export default function HomePage() {
 
   return (
     <section
-      className={`flex flex-col items-center justify-center min-h-[80vh] transition-colors duration-300 ${
+      className={`h-full flex flex-col items-center justify-center min-h-[80vh] transition-colors duration-300 ${
         darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
       }`}
     >
