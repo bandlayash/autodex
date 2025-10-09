@@ -1,85 +1,35 @@
 "use client";
 
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { DarkModeContext } from "@/context/DarkModeContext";
 import { Search, Sparkles, ChevronDown } from "lucide-react";
 
-// Car data for dropdowns
+// Types
+interface Model {
+  Make_ID?: number;
+  Make_Name?: string;
+  Model_ID?: number;
+  Model_Name?: string;
+  model_name?: string; // CarQuery format
+  model_make_id?: string; // CarQuery format
+}
+
 const carMakes = ["Any", 
-  "Abarth",
-  "Alfa Romeo",
-  "Aston Martin",
-  "Audi",
-  "Bentley",
-  "BMW",
-  "Bugatti",
-  "Cadillac",
-  "Chevrolet",
-  "Chrysler",
-  "Citroën",
-  "Dacia",
-  "Daewoo",
-  "Daihatsu",
-  "Dodge",
-  "Donkervoort",
-  "DS",
-  "Ferrari",
-  "Fiat",
-  "Fisker",
-  "Ford",
-  "Honda",
-  "Hummer",
-  "Hyundai",
-  "Infiniti",
-  "Iveco",
-  "Jaguar",
-  "Jeep",
-  "Kia",
-  "KTM",
-  "Lada",
-  "Lamborghini",
-  "Lancia",
-  "Land Rover",
-  "Landwind",
-  "Lexus",
-  "Lotus",
-  "Maserati",
-  "Maybach",
-  "Mazda",
-  "McLaren",
-  "Mercedes-Benz",
-  "MG",
-  "Mini",
-  "Mitsubishi",
-  "Morgan",
-  "Nissan",
-  "Opel",
-  "Peugeot",
-  "Porsche",
-  "Renault",
-  "Rolls-Royce",
-  "Rover",
-  "Saab",
-  "Seat",
-  "Skoda",
-  "Smart",
-  "SsangYong",
-  "Subaru",
-  "Suzuki",
-  "Tesla",
-  "Toyota",
-  "Volkswagen",
-  "Volvo", ];
+  "Abarth", "Alfa Romeo", "Aston Martin", "Audi", "Bentley", "BMW", "Bugatti",
+  "Cadillac", "Chevrolet", "Chrysler", "Citroën", "Dacia", "Daewoo", "Daihatsu",
+  "Dodge", "Ferrari", "Fiat", "Ford", "Honda", "Hyundai", "Infiniti", "Jaguar",
+  "Jeep", "Kia", "Lamborghini", "Land Rover", "Lexus", "Maserati", "Mazda",
+  "McLaren", "Mercedes-Benz", "Mini", "Mitsubishi", "Nissan", "Porsche",
+  "Rolls-Royce", "Subaru", "Tesla", "Toyota", "Volkswagen", "Volvo"
+];
+
 const drivetrains = ["Any", "FWD", "RWD", "AWD", "4WD"];
 const cylinders = ["Any", "3", "4", "5", "6", "8", "10", "12"];
 const fuelTypes = ["Any", "Gasoline", "Diesel", "Electric", "Hybrid", "Plug-in Hybrid"];
 const bodyStyles = ["Any", "Sedan", "Coupe", "Hatchback", "SUV", "Truck", "Van", "Convertible", "Wagon"];
 
-// Generate years from 1990 to current year
 const currentYear = new Date().getFullYear();
 const years = ["Any", ...Array.from({ length: currentYear - 1959 }, (_, i) => String(currentYear - i))];
-
-
 
 export default function SearchPage() {
   const { darkMode } = useContext(DarkModeContext);
@@ -88,24 +38,158 @@ export default function SearchPage() {
 
   // Filter states
   const [make, setMake] = useState("Any");
-  const [model, setModel] = useState("");
+  const [model, setModel] = useState("Any");
   const [year, setYear] = useState("Any");
   const [drivetrain, setDrivetrain] = useState("Any");
   const [cylinder, setCylinder] = useState("Any");
   const [fuelType, setFuelType] = useState("Any");
   const [bodyStyle, setBodyStyle] = useState("Any");
 
+  const [models, setModels] = useState<string[]>(["Any"]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  useEffect(() => {
+    if (make !== "Any") {
+      // Fetch all models for the make without year filter
+      fetchModelsHybrid(make);
+    } else {
+      setModels(["Any"]);
+      setModel("Any");
+    }
+  }, [make]);
+
+  // Hybrid approach: Try CarQuery first, fallback to NHTSA, then merge results
+  const fetchModelsHybrid = async (selectedMake: string) => {
+    setLoadingModels(true);
+    
+    try {
+      // Fetch from both APIs in parallel
+      const [carQueryModels, nhtsaModels] = await Promise.all([
+        fetchFromCarQuery(selectedMake),
+        fetchFromNHTSA(selectedMake)
+      ]);
+      
+      // Merge and deduplicate results from both APIs
+      const allModels = new Set([...carQueryModels, ...nhtsaModels]);
+      const sortedModels = Array.from(allModels).sort();
+      
+      if (sortedModels.length > 0) {
+        setModels(["Any", ...sortedModels]);
+        console.log(`✓ Total unique models found: ${sortedModels.length}`);
+      } else {
+        setModels(["Any"]);
+        console.warn(`No models found for ${selectedMake}`);
+      }
+      
+      setModel("Any");
+      
+    } catch (error) {
+      console.error("Error fetching models:", error);
+      setModels(["Any"]);
+      setModel("Any");
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  // CarQuery API - More comprehensive, includes exotic cars
+  const fetchFromCarQuery = async (selectedMake: string): Promise<string[]> => {
+    try {
+      // CarQuery uses lowercase make names
+      const makeFormatted = selectedMake.toLowerCase().replace(/\s+/g, '_');
+      
+      // Omit year parameter to get ALL models for the make
+      const response = await fetch(
+        `https://www.carqueryapi.com/api/0.3/?cmd=getModels&make=${makeFormatted}`,
+        { 
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        }
+      );
+
+      const text = await response.text();
+      
+      // CarQuery returns JSONP, we need to extract the JSON
+      const jsonMatch = text.match(/\((.*)\)/s);
+      if (!jsonMatch) return [];
+      
+      const data = JSON.parse(jsonMatch[1]);
+      
+      if (data.Models && data.Models.length > 0) {
+        const modelNames = [...new Set(
+          data.Models
+            .map((item: Model) => item.model_name)
+            .filter((name): name is string => typeof name === 'string' && name.length > 0)
+        )].sort();
+        
+        console.log(`✓ CarQuery found ${modelNames.length} models for ${selectedMake}`);
+        return modelNames;
+      }
+      
+      return [];
+    } catch (error) {
+      console.warn("CarQuery API failed, trying NHTSA...", error);
+      return [];
+    }
+  };
+
+  // NHTSA API - Government data, very reliable but limited
+  const fetchFromNHTSA = async (selectedMake: string): Promise<string[]> => {
+    try {
+      // Get all models across all years by using a wide year range
+      const allModels: Set<string> = new Set();
+      
+      // Fetch models for the last 30 years to get comprehensive list
+      const yearRange = Array.from({ length: 30 }, (_, i) => currentYear - i);
+      
+      // Batch requests in groups of 5 to avoid overwhelming the API
+      const batchSize = 5;
+      for (let i = 0; i < yearRange.length; i += batchSize) {
+        const batch = yearRange.slice(i, i + batchSize);
+        const fetchPromises = batch.map(year =>
+          fetch(
+            `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/${encodeURIComponent(selectedMake)}/modelyear/${year}?format=json`
+          )
+            .then(res => res.json())
+            .catch(err => {
+              console.warn(`Failed to fetch ${selectedMake} for year ${year}:`, err);
+              return { Results: [] };
+            })
+        );
+        
+        const results = await Promise.all(fetchPromises);
+        
+        results.forEach(data => {
+          if (data.Results && data.Results.length > 0) {
+            data.Results.forEach((item: Model) => {
+              if (item.Model_Name && typeof item.Model_Name === 'string') {
+                allModels.add(item.Model_Name);
+              }
+            });
+          }
+        });
+      }
+      
+      const modelNames = Array.from(allModels).sort();
+      console.log(`✓ NHTSA found ${modelNames.length} models for ${selectedMake}`);
+      return modelNames;
+      
+    } catch (error) {
+      console.error("NHTSA API error:", error);
+      return [];
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Searching with filters:", {
       make, model, year, drivetrain, cylinder, fuelType, bodyStyle
     });
-    // Search functionality will be implemented later
   };
 
   const resetFilters = () => {
     setMake("Any");
-    setModel("");
+    setModel("Any");
     setYear("Any");
     setDrivetrain("Any");
     setCylinder("Any");
@@ -119,15 +203,9 @@ export default function SearchPage() {
       : "bg-white text-gray-900 border-gray-300"
   }`;
 
-  const inputClass = `w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-    darkMode
-      ? "bg-gray-800 text-gray-100 border-gray-700 placeholder-gray-400"
-      : "bg-white text-gray-900 border-gray-300 placeholder-gray-500"
-  }`;
-
   return (
     <section
-      className={`h-full flex flex-col items-center justify-center px-4 transition-colors duration-300 ${
+      className={`h-full flex flex-col items-center justify-center px-4 py-8 transition-colors duration-300 ${
         darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
       }`}
     >
@@ -135,14 +213,13 @@ export default function SearchPage() {
         find your next car
       </h2>
 
-      {/* Initial Choice Buttons */}
       {!searchMode && (
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
           <button
             onClick={() => setSearchMode("specific")}
             className={`flex-1 p-6 rounded-xl border-2 transition-all duration-300 ${
               darkMode
-                ? "border-gray-700 bg-gray-800 hover:border-blue-500 hover:bg-gray-750"
+                ? "border-gray-700 bg-gray-800 hover:border-blue-500"
                 : "border-gray-300 bg-white hover:border-blue-500 hover:shadow-lg"
             }`}
           >
@@ -157,7 +234,7 @@ export default function SearchPage() {
             onClick={() => setSearchMode("help")}
             className={`flex-1 p-6 rounded-xl border-2 transition-all duration-300 ${
               darkMode
-                ? "border-gray-700 bg-gray-800 hover:border-blue-500 hover:bg-gray-750"
+                ? "border-gray-700 bg-gray-800 hover:border-blue-500"
                 : "border-gray-300 bg-white hover:border-blue-500 hover:shadow-lg"
             }`}
           >
@@ -170,14 +247,12 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* Specific Car Search with Filters */}
       {searchMode === "specific" && (
-        <div className="w-full max-w-4xl animate-fadeIn">
+        <div className="w-full max-w-4xl">
           <form onSubmit={handleSearch} className={`p-6 rounded-xl border ${
             darkMode ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-white"
           }`}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {/* Make */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   make
@@ -192,21 +267,6 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              {/* Model */}
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                  model
-                </label>
-                <input
-                  type="text"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g., Civic, 3 Series"
-                  className={inputClass}
-                />
-              </div>
-
-              {/* Year */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   year
@@ -221,7 +281,28 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              {/* Drivetrain */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                  model {loadingModels && <span className="text-blue-500">(loading...)</span>}
+                </label>
+                <div className="relative">
+                  <select 
+                    value={model} 
+                    onChange={(e) => setModel(e.target.value)} 
+                    className={selectClass}
+                    disabled={loadingModels || make === "Any"}
+                  >
+                    {models.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" size={20} />
+                </div>
+                {make === "Any" && (
+                  <p className="text-xs text-gray-500 mt-1">select a make first</p>
+                )}
+              </div>
+
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   drivetrain
@@ -236,7 +317,6 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              {/* Cylinders */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   cylinders
@@ -251,7 +331,6 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              {/* Fuel Type */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   fuel type
@@ -266,7 +345,6 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              {/* Body Style */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   body style
@@ -282,7 +360,6 @@ export default function SearchPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-4">
               <button
                 type="submit"
@@ -318,17 +395,16 @@ export default function SearchPage() {
           </button>
 
           <p className="mt-6 text-gray-500 text-sm text-center">
-            (Search functionality coming soon!)
+            combining carquery + nhtsa for comprehensive coverage • loads in ~2 seconds
           </p>
         </div>
       )}
 
-      {/* Help Find a Car */}
       {searchMode === "help" && (
-        <div className="w-full max-w-md animate-fadeIn">
+        <div className="w-full max-w-md">
           <form
             onSubmit={(e) => e.preventDefault()}
-            className={`w-full rounded-xl border transition-colors duration-300 ${
+            className={`w-full rounded-xl border ${
               darkMode ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-white"
             }`}
           >
@@ -337,20 +413,19 @@ export default function SearchPage() {
               onChange={(e) => setHelpQuery(e.target.value)}
               placeholder="describe what you're looking for..."
               autoFocus
-              rows={1}
-              className={`w-full px-4 py-3 rounded-t-xl focus:outline-none resize-true ${
+              rows={4}
+              className={`w-full px-4 py-3 rounded-t-xl focus:outline-none resize-none ${
                 darkMode
                   ? "bg-gray-800 text-gray-100 placeholder-gray-400"
                   : "bg-white text-gray-900 placeholder-gray-500"
               }`}
-
             />
-            <div className="p-2 flex justify-end">
+            <div className="p-3 flex justify-end">
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
               >
-                <Sparkles size={15} />
+                <Sparkles size={18} />
                 search
               </button>
             </div>
