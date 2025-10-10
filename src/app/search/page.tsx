@@ -536,7 +536,7 @@ export default function SearchPage() {
               onChange={(e) => setHelpQuery(e.target.value)}
               placeholder="describe what you're looking for... (e.g., 'I need a reliable family SUV with good gas mileage under $30k')"
               autoFocus
-              rows={4}
+              rows={3}
               className={`w-full px-4 py-3 rounded-t-xl focus:outline-none resize-none ${
                 darkMode 
                   ? "bg-gray-800 text-gray-100 placeholder-gray-400" 

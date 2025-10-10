@@ -2,6 +2,7 @@
 
 import React, { useContext } from "react";
 import { DarkModeContext } from "@/context/DarkModeContext";
+import Link from "next/link";
 
 export default function HomePage() {
   const { darkMode } = useContext(DarkModeContext);
@@ -12,12 +13,14 @@ export default function HomePage() {
         darkMode ? "bg-gray-800 text-gray-100" : "bg-blue-100 text-gray-900"
       }`}
     >
-      <h2 className="text-4xl font-bold mb-4">
+      <h2 className="text-4xl font-bold mb-8">
         everything you need, all in one place.
       </h2>
-      <button className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition">
-        get started
-      </button>
+      <Link href="/search">
+        <button className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition">
+          start
+        </button>
+      </Link>
     </section>
   );
 }

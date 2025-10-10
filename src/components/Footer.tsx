@@ -12,7 +12,7 @@ export default function Footer() {
         darkMode ? "bg-gray-950 text-gray-400" : "bg-gray-800 text-white"
       }`}
     >
-      <p>© 2025 autodex. All rights reserved.</p>
+      <p>© 2025 autodex. all rights reserved.</p>
     </footer>
   );
 }

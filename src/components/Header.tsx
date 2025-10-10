@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import Link from "next/link";
 import { DarkModeContext } from "@/context/DarkModeContext";
-import { Sun, Moon, Search, House } from "lucide-react";
+import { Sun, Moon, Search, House, User } from "lucide-react";
 
 export default function Header() {
   const { darkMode, toggleDarkMode } = useContext(DarkModeContext);
+  const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
 
   return (
     <header
@@ -16,12 +17,60 @@ export default function Header() {
     >
       <h1 className="text-2xl font-bold text-blue-600">autodex</h1>
       <nav className="flex items-center space-x-4">
-        <Link href="/" className="hover:text-blue-600">
-          <House/>
-        </Link>
-        <Link href="/search" className="hover:text-blue-600">
-          <Search/>
-        </Link>
+        <div className = "relative">
+          <Link href="/" className="hover:text-blue-600 transition-colors"
+          onMouseEnter={() => setHoveredIcon("home")}
+          onMouseLeave={() => setHoveredIcon(null)}>
+            <House/>
+          </Link>
+          {hoveredIcon === "home" && (
+            <div className={`absolute left-1/2 -translate-x-1/2 top-full mt-2 px-2 py-1 rounded text-xs whitespace-nowrap z-50 ${
+              darkMode ? "bg-gray-700 text-gray-100" : "bg-gray-900 text-white"
+            }`}>
+              home
+              <div className={`absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 rotate-45 ${
+                darkMode ? "bg-gray-700" : "bg-gray-900"
+              }`} />
+            </div>
+          )}
+        </div>
+        
+        <div className = "relative">
+          <Link href="/search" className="hover:text-blue-600 transition-colors"
+          onMouseEnter={() => setHoveredIcon("search")}
+          onMouseLeave={() => setHoveredIcon(null)}>
+            <Search/>
+          </Link>
+          {hoveredIcon === "search" && (
+            <div className={`absolute left-1/2 -translate-x-1/2 top-full mt-2 px-2 py-1 rounded text-xs whitespace-nowrap z-50 ${
+              darkMode ? "bg-gray-700 text-gray-100" : "bg-gray-900 text-white"
+            }`}>
+              search
+              <div className={`absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 rotate-45 ${
+                darkMode ? "bg-gray-700" : "bg-gray-900"
+              }`} />
+            </div>
+          )}
+        </div>
+
+        <div className = "relative">
+          <Link href="#" className="hover:text-blue-600 transition-colors"
+          onMouseEnter={() => setHoveredIcon("account")}
+          onMouseLeave={() => setHoveredIcon(null)}>
+            <User/>
+          </Link>
+          {hoveredIcon === "account" && (
+            <div className={`absolute left-1/2 -translate-x-1/2 top-full mt-2 px-2 py-1 rounded text-xs whitespace-nowrap z-50 ${
+              darkMode ? "bg-gray-700 text-gray-100" : "bg-gray-900 text-white"
+            }`}>
+              account
+              <div className={`absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 rotate-45 ${
+                darkMode ? "bg-gray-700" : "bg-gray-900"
+              }`} />
+            </div>
+          )}
+        </div>
+
         <button
           onClick={toggleDarkMode}
           className={`p-2 rounded-full border transition ${
@@ -31,7 +80,7 @@ export default function Header() {
           }`}
           aria-label="Toggle dark mode"
         >
-          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+          {darkMode ? <Sun size={14} /> : <Moon size={14} />}
         </button>
       </nav>
     </header>
