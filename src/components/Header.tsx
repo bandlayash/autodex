@@ -54,7 +54,7 @@ export default function Header() {
         </div>
 
         <div className = "relative">
-          <Link href="#" className="hover:text-blue-600 transition-colors"
+          <Link href="/account" className="hover:text-blue-600 transition-colors"
           onMouseEnter={() => setHoveredIcon("account")}
           onMouseLeave={() => setHoveredIcon(null)}>
             <User/>
